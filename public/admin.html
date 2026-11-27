@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Admin — Sistem Tugasan</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <span class="brand">🎓 Sistem Tugasan</span>
+  <div class="nav-links">
+    <a href="/admin.html">Admin</a>
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/submit.html">Submit</a>
+    <a href="/mentor.html">Mentor</a>
+    <button class="btn-logout" onclick="logout()">Log Keluar</button>
+  </div>
+</nav>
+
+<div class="page">
+  <h1>Panel Admin</h1>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('tab-sesi', this)">Sesi &amp; Kelas</button>
+    <button class="tab-btn" onclick="switchTab('tab-pelajar', this)">Pelajar</button>
+    <button class="tab-btn" onclick="switchTab('tab-mentor', this)">Mentor</button>
+  </div>
+
+  <!-- TAB: Sesi & Kelas -->
+  <div id="tab-sesi" class="tab-panel active">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+
+      <!-- Tambah Sesi -->
+      <div class="card">
+        <h2>Tambah Sesi Semester</h2>
+        <div id="msg-sesi"></div>
+        <label>Nama Semester (cth: Semester 1)</label>
+        <input type="text" id="nama_semester" placeholder="Semester 1">
+        <label>Tahun (cth: 2024/2025)</label>
+        <input type="text" id="tahun" placeholder="2024/2025">
+        <button class="btn btn-primary" onclick="tambahSesi()">Tambah Sesi</button>
+
+        <h3 style="margin-top:1.5rem">Senarai Sesi</h3>
+        <ul id="list-sesi" style="padding:0;list-style:none;margin:0"></ul>
+      </div>
+
+      <!-- Tambah Kelas -->
+      <div class="card">
+        <h2>Tambah Kelas</h2>
+        <div id="msg-kelas"></div>
+        <label>Pilih Sesi</label>
+        <select id="sesi-for-kelas"><option value="">-- Pilih Sesi --</option></select>
+        <label>Nama Kelas (cth: CS101)</label>
+        <input type="text" id="nama_kelas" placeholder="CS101">
+        <button class="btn btn-primary" onclick="tambahKelas()">Tambah Kelas</button>
+
+        <h3 style="margin-top:1.5rem">Senarai Kelas</h3>
+        <ul id="list-kelas" style="padding:0;list-style:none;margin:0"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Pelajar -->
+  <div id="tab-pelajar" class="tab-panel">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+
+      <!-- Upload Excel/PDF -->
+      <div class="card">
+        <h2>Upload Senarai Pelajar (Excel / PDF)</h2>
+        <div id="msg-upload"></div>
+        <label>Pilih Sesi</label>
+        <select id="sesi-upload" onchange="loadKelasUpload()"><option value="">-- Pilih Sesi --</option></select>
+        <label>Pilih Kelas</label>
+        <select id="kelas-upload"><option value="">-- Pilih Kelas --</option></select>
+        <label>Fail Excel (.xlsx/.xls) atau PDF</label>
+        <input type="file" id="fail-upload" accept=".xlsx,.xls,.pdf">
+        <button class="btn btn-primary" onclick="uploadPelajar()">Upload &amp; Import</button>
+      </div>
+
+      <!-- Tambah Manual -->
+      <div class="card">
+        <h2>Tambah Pelajar Manual</h2>
+        <div id="msg-manual"></div>
+        <label>Pilih Sesi</label>
+        <select id="sesi-manual" onchange="loadKelasManual()"><option value="">-- Pilih Sesi --</option></select>
+        <label>Pilih Kelas</label>
+        <select id="kelas-manual"><option value="">-- Pilih Kelas --</option></select>
+        <label>Nama Pelajar</label>
+        <input type="text" id="nama-manual" placeholder="Ahmad bin Ali">
+        <label>No. Matrik (pilihan)</label>
+        <input type="text" id="matrik-manual" placeholder="2024001">
+        <button class="btn btn-primary" onclick="tambahPelajarManual()">Tambah Pelajar</button>
+      </div>
+    </div>
+
+    <!-- Semak Pelajar -->
+    <div class="card">
+      <h2>Semak Pelajar dalam Kelas</h2>
+      <div style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1rem">
+        <div style="flex:1;min-width:160px">
+          <label>Sesi</label>
+          <select id="sesi-semak" onchange="loadKelasSemak()" style="margin:0">
+            <option value="">-- Pilih Sesi --</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:160px">
+          <label>Kelas</label>
+          <select id="kelas-semak" onchange="loadPelajarSemak()" style="margin:0">
+            <option value="">-- Pilih Kelas --</option>
+          </select>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Nama</th><th>No. Matrik</th><th>Tindakan</th></tr></thead>
+        <tbody id="tb-pelajar"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: Mentor -->
+  <div id="tab-mentor" class="tab-panel">
+    <div class="card">
+      <h2>Tetapkan Mentor Terbaik</h2>
+      <div id="msg-mentor"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div>
+          <label>Jenis Tugasan</label>
+          <select id="jenis-mentor">
+            <option value="">-- Pilih Jenis --</option>
+            <option>Case Study</option>
+            <option>Reverse Engineering Project</option>
+            <option>Slicing Project</option>
+            <option>3D Print Project</option>
+          </select>
+          <label>Pilih Sesi</label>
+          <select id="sesi-mentor" onchange="loadKelasMentor()"><option value="">-- Pilih Sesi --</option></select>
+          <label>Pilih Kelas</label>
+          <select id="kelas-mentor" onchange="loadPelajarMentor()"><option value="">-- Pilih Kelas --</option></select>
+          <label>Pilih Pelajar</label>
+          <select id="pelajar-mentor"><option value="">-- Pilih Pelajar --</option></select>
+        </div>
+        <div>
+          <label>Gambar Pelajar (pilihan)</label>
+          <input type="file" id="gambar-mentor" accept=".jpg,.jpeg,.png">
+          <button class="btn btn-success" style="margin-top:1rem;width:100%" onclick="simpanMentor()">Simpan Mentor</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Mentor Semasa</h2>
+      <div id="mentor-semasa-grid" class="mentor-grid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Check auth
+  fetch('/auth/status').then(r => r.json()).then(d => {
+    if (!d.loggedIn) window.location.href = '/login.html';
+  });
+
+  function logout() { window.location.href = '/auth/logout'; }
+
+  function switchTab(id, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function showMsg(id, msg, type='success') {
+    const el = document.getElementById(id);
+    el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+    setTimeout(() => el.innerHTML = '', 4000);
+  }
+
+  // ===== SESI =====
+  async function loadSesi() {
+    const res = await fetch('/api/sesi');
+    const sesi = await res.json();
+
+    const ul = document.getElementById('list-sesi');
+    ul.innerHTML = sesi.map(s =>
+      `<li style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid #f0f4f8">
+        <span>${s.nama_semester} — ${s.tahun}</span>
+        <button class="btn btn-danger btn-sm" onclick="padamSesi(${s.id})">Padam</button>
+      </li>`
+    ).join('') || '<li style="color:#57606a;font-size:.85rem">Tiada sesi.</li>';
+
+    // Update all sesi dropdowns
+    const opts = '<option value="">-- Pilih Sesi --</option>' + sesi.map(s => `<option value="${s.id}">${s.nama_semester} — ${s.tahun}</option>`).join('');
+    ['sesi-for-kelas','sesi-upload','sesi-manual','sesi-semak','sesi-mentor'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = opts;
+    });
+  }
+
+  async function tambahSesi() {
+    const nama_semester = document.getElementById('nama_semester').value.trim();
+    const tahun = document.getElementById('tahun').value.trim();
+    if (!nama_semester || !tahun) return showMsg('msg-sesi', 'Sila isi semua maklumat.', 'error');
+    const res = await fetch('/admin/sesi', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nama_semester, tahun}) });
+    const d = await res.json();
+    if (d.success) { showMsg('msg-sesi', 'Sesi berjaya ditambah.'); loadSesi(); document.getElementById('nama_semester').value=''; document.getElementById('tahun').value=''; }
+    else showMsg('msg-sesi', d.error, 'error');
+  }
+
+  async function padamSesi(id) {
+    if (!confirm('Padam sesi ini?')) return;
+    await fetch('/admin/sesi/' + id, { method:'DELETE' });
+    loadSesi();
+  }
+
+  // ===== KELAS =====
+  async function loadKelas(sesi_id, targetUl) {
+    if (!sesi_id) return;
+    const res = await fetch('/api/kelas/' + sesi_id);
+    const kelas = await res.json();
+    const ul = document.getElementById(targetUl);
+    if (!ul) return;
+    ul.innerHTML = kelas.map(k =>
+      `<li style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid #f0f4f8">
+        <span>${k.nama_kelas}</span>
+        <button class="btn btn-danger btn-sm" onclick="padamKelas(${k.id})">Padam</button>
+      </li>`
+    ).join('') || '<li style="color:#57606a;font-size:.85rem">Tiada kelas.</li>';
+  }
+
+  document.getElementById('sesi-for-kelas').addEventListener('change', function() {
+    loadKelas(this.value, 'list-kelas');
+  });
+
+  async function tambahKelas() {
+    const sesi_id = document.getElementById('sesi-for-kelas').value;
+    const nama_kelas = document.getElementById('nama_kelas').value.trim();
+    if (!sesi_id || !nama_kelas) return showMsg('msg-kelas', 'Sila pilih sesi dan isi nama kelas.', 'error');
+    const res = await fetch('/admin/kelas', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nama_kelas, sesi_id}) });
+    const d = await res.json();
+    if (d.success) { showMsg('msg-kelas', 'Kelas berjaya ditambah.'); loadKelas(sesi_id, 'list-kelas'); document.getElementById('nama_kelas').value=''; }
+    else showMsg('msg-kelas', d.error, 'error');
+  }
+
+  async function padamKelas(id) {
+    if (!confirm('Padam kelas ini?')) return;
+    await fetch('/admin/kelas/' + id, { method:'DELETE' });
+    const sesi_id = document.getElementById('sesi-for-kelas').value;
+    loadKelas(sesi_id, 'list-kelas');
+  }
+
+  // ===== UPLOAD PELAJAR =====
+  async function loadKelasUpload() {
+    const sesi_id = document.getElementById('sesi-upload').value;
+    const sel = document.getElementById('kelas-upload');
+    sel.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+    if (!sesi_id) return;
+    const res = await fetch('/api/kelas/' + sesi_id);
+    const kelas = await res.json();
+    kelas.forEach(k => sel.innerHTML += `<option value="${k.id}">${k.nama_kelas}</option>`);
+  }
+
+  async function uploadPelajar() {
+    const kelas_id = document.getElementById('kelas-upload').value;
+    const fail = document.getElementById('fail-upload').files[0];
+    if (!kelas_id || !fail) return showMsg('msg-upload', 'Sila pilih kelas dan fail.', 'error');
+    const fd = new FormData();
+    fd.append('kelas_id', kelas_id);
+    fd.append('fail', fail);
+    showMsg('msg-upload', 'Memproses...');
+    const res = await fetch('/admin/upload-pelajar', { method:'POST', body: fd });
+    const d = await res.json();
+    if (d.success) showMsg('msg-upload', `Berjaya import ${d.count} pelajar.`);
+    else showMsg('msg-upload', d.error, 'error');
+  }
+
+  // ===== TAMBAH MANUAL =====
+  async function loadKelasManual() {
+    const sesi_id = document.getElementById('sesi-manual').value;
+    const sel = document.getElementById('kelas-manual');
+    sel.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+    if (!sesi_id) return;
+    const res = await fetch('/api/kelas/' + sesi_id);
+    const kelas = await res.json();
+    kelas.forEach(k => sel.innerHTML += `<option value="${k.id}">${k.nama_kelas}</option>`);
+  }
+
+  async function tambahPelajarManual() {
+    const kelas_id = document.getElementById('kelas-manual').value;
+    const nama = document.getElementById('nama-manual').value.trim();
+    const no_matrik = document.getElementById('matrik-manual').value.trim();
+    if (!kelas_id || !nama) return showMsg('msg-manual', 'Sila pilih kelas dan isi nama.', 'error');
+    const res = await fetch('/admin/pelajar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nama, no_matrik, kelas_id}) });
+    const d = await res.json();
+    if (d.success) { showMsg('msg-manual', 'Pelajar berjaya ditambah.'); document.getElementById('nama-manual').value=''; document.getElementById('matrik-manual').value=''; }
+    else showMsg('msg-manual', d.error, 'error');
+  }
+
+  // ===== SEMAK PELAJAR =====
+  async function loadKelasSemak() {
+    const sesi_id = document.getElementById('sesi-semak').value;
+    const sel = document.getElementById('kelas-semak');
+    sel.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+    document.getElementById('tb-pelajar').innerHTML = '';
+    if (!sesi_id) return;
+    const res = await fetch('/api/kelas/' + sesi_id);
+    const kelas = await res.json();
+    kelas.forEach(k => sel.innerHTML += `<option value="${k.id}">${k.nama_kelas}</option>`);
+  }
+
+  async function loadPelajarSemak() {
+    const kelas_id = document.getElementById('kelas-semak').value;
+    const tb = document.getElementById('tb-pelajar');
+    tb.innerHTML = '';
+    if (!kelas_id) return;
+    const res = await fetch('/api/pelajar/' + kelas_id);
+    const pelajar = await res.json();
+    tb.innerHTML = pelajar.map((p, i) =>
+      `<tr>
+        <td>${i+1}</td>
+        <td>${p.nama}</td>
+        <td>${p.no_matrik || '—'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="padamPelajar(${p.id})">Padam</button></td>
+      </tr>`
+    ).join('') || '<tr><td colspan="4" style="color:#57606a;text-align:center">Tiada pelajar.</td></tr>';
+  }
+
+  async function padamPelajar(id) {
+    if (!confirm('Padam pelajar ini?')) return;
+    await fetch('/admin/pelajar/' + id, { method:'DELETE' });
+    loadPelajarSemak();
+  }
+
+  // ===== MENTOR =====
+  async function loadKelasMentor() {
+    const sesi_id = document.getElementById('sesi-mentor').value;
+    const sel = document.getElementById('kelas-mentor');
+    sel.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+    document.getElementById('pelajar-mentor').innerHTML = '<option value="">-- Pilih Pelajar --</option>';
+    if (!sesi_id) return;
+    const res = await fetch('/api/kelas/' + sesi_id);
+    const kelas = await res.json();
+    kelas.forEach(k => sel.innerHTML += `<option value="${k.id}">${k.nama_kelas}</option>`);
+  }
+
+  async function loadPelajarMentor() {
+    const kelas_id = document.getElementById('kelas-mentor').value;
+    const sel = document.getElementById('pelajar-mentor');
+    sel.innerHTML = '<option value="">-- Pilih Pelajar --</option>';
+    if (!kelas_id) return;
+    const res = await fetch('/api/pelajar/' + kelas_id);
+    const pelajar = await res.json();
+    pelajar.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.nama}</option>`);
+  }
+
+  async function simpanMentor() {
+    const pelajar_id = document.getElementById('pelajar-mentor').value;
+    const jenis_tugasan = document.getElementById('jenis-mentor').value;
+    const gambar = document.getElementById('gambar-mentor').files[0];
+    if (!pelajar_id || !jenis_tugasan) return showMsg('msg-mentor', 'Sila pilih jenis tugasan dan pelajar.', 'error');
+    const fd = new FormData();
+    fd.append('pelajar_id', pelajar_id);
+    fd.append('jenis_tugasan', jenis_tugasan);
+    if (gambar) fd.append('gambar', gambar);
+    const res = await fetch('/admin/mentor', { method:'POST', body: fd });
+    const d = await res.json();
+    if (d.success) { showMsg('msg-mentor', 'Mentor berjaya disimpan.'); loadMentorSemasa(); }
+    else showMsg('msg-mentor', d.error, 'error');
+  }
+
+  async function loadMentorSemasa() {
+    const res = await fetch('/api/mentors');
+    const mentors = await res.json();
+    const grid = document.getElementById('mentor-semasa-grid');
+    if (mentors.length === 0) { grid.innerHTML = '<p style="color:#57606a">Belum ada mentor ditetapkan.</p>'; return; }
+    grid.innerHTML = mentors.map(m => `
+      <div class="mentor-card">
+        ${m.gambar_path
+          ? `<img src="${m.gambar_path}" alt="${m.nama}">`
+          : `<div class="mentor-avatar-placeholder">👤</div>`}
+        <div class="mentor-type">${m.jenis_tugasan}</div>
+        <div class="mentor-name">${m.nama}</div>
+        <div class="mentor-meta">${m.nama_kelas} · ${m.nama_semester} ${m.tahun}</div>
+      </div>`).join('');
+  }
+
+  // Init
+  loadSesi();
+  loadMentorSemasa();
+</script>
+</body>
+</html>

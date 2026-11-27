@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentor Spotlight — Sistem Tugasan</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { background: #0f172a; color: #f1f5f9; }
+    .nav { background: #1e293b; }
+    .nav .brand, .nav-links a { color: #f1f5f9; }
+    .nav-links a { color: #94a3b8; }
+    .nav-links a:hover { color: #f1f5f9; }
+
+    .mentor-page { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
+    .mentor-title {
+      text-align: center; font-size: 2.2rem; font-weight: 700;
+      color: #f1f5f9; letter-spacing: .03em; margin-bottom: 0.4rem;
+    }
+    .mentor-subtitle { text-align: center; color: #94a3b8; font-size: 1rem; margin-bottom: 2.5rem; }
+
+    .mentor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.75rem; }
+
+    .mentor-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 14px;
+      padding: 2rem 1.5rem; text-align: center;
+      transition: transform .25s, box-shadow .25s;
+    }
+    .mentor-card:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+
+    .mentor-card img {
+      width: 110px; height: 110px; object-fit: cover;
+      border-radius: 50%; border: 4px solid #3b82f6; margin-bottom: 1rem;
+    }
+    .mentor-avatar-placeholder {
+      width: 110px; height: 110px; border-radius: 50%;
+      background: #334155; display: flex; align-items: center;
+      justify-content: center; font-size: 2.5rem; margin: 0 auto 1rem;
+    }
+    .mentor-card .mentor-type {
+      display: inline-block; background: #1d4ed8; color: #bfdbfe;
+      font-size: 0.75rem; font-weight: 700; padding: .2rem .7rem;
+      border-radius: 20px; margin-bottom: .6rem; letter-spacing: .04em; text-transform: uppercase;
+    }
+    .mentor-card .mentor-name { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; margin-bottom: .3rem; }
+    .mentor-card .mentor-meta { font-size: 0.82rem; color: #94a3b8; }
+    .mentor-card .mentor-date { font-size: 0.75rem; color: #64748b; margin-top: .4rem; }
+
+    .no-mentor { text-align: center; color: #64748b; padding: 4rem 0; font-size: 1.1rem; }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    .mentor-card { animation: fadeIn .4s ease both; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="brand">🎓 Sistem Tugasan</span>
+  <div class="nav-links">
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/submit.html">Submit</a>
+    <a href="/admin.html" id="nav-admin" style="display:none">Admin</a>
+    <button class="btn-logout" id="nav-logout" onclick="window.location.href='/auth/logout'" style="display:none">Log Keluar</button>
+  </div>
+</nav>
+
+<div class="mentor-page">
+  <h1 class="mentor-title">🏆 Mentor Spotlight</h1>
+  <p class="mentor-subtitle">Pelajar terbaik yang dilantik sebagai Mentor untuk setiap kategori tugasan</p>
+
+  <div id="mentor-grid" class="mentor-grid"></div>
+  <div id="no-mentor" class="no-mentor" style="display:none">Belum ada mentor ditetapkan.</div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  fetch('/auth/status').then(r => r.json()).then(d => {
+    if (d.loggedIn) {
+      document.getElementById('nav-admin').style.display = 'inline';
+      document.getElementById('nav-logout').style.display = 'inline';
+    }
+  });
+
+  function renderMentors(mentors) {
+    const grid = document.getElementById('mentor-grid');
+    const noMentor = document.getElementById('no-mentor');
+    if (!mentors || mentors.length === 0) {
+      grid.innerHTML = '';
+      noMentor.style.display = 'block';
+      return;
+    }
+    noMentor.style.display = 'none';
+    grid.innerHTML = mentors.map((m, i) => `
+      <div class="mentor-card" style="animation-delay:${i * 0.08}s">
+        ${m.gambar_path
+          ? `<img src="${m.gambar_path}" alt="${escHtml(m.nama)}">`
+          : `<div class="mentor-avatar-placeholder">👤</div>`}
+        <div class="mentor-type">${escHtml(m.jenis_tugasan)}</div>
+        <div class="mentor-name">${escHtml(m.nama)}</div>
+        <div class="mentor-meta">${escHtml(m.nama_kelas)} · ${escHtml(m.nama_semester)} ${escHtml(m.tahun)}</div>
+        <div class="mentor-date">Ditetapkan: ${new Date(m.tarikh_ditetapkan).toLocaleDateString('ms-MY')}</div>
+      </div>`).join('');
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function loadMentors() {
+    const res = await fetch('/api/mentors');
+    const data = await res.json();
+    renderMentors(data);
+  }
+
+  // Live update via Socket.io
+  const socket = io();
+  socket.on('mentor-update', (mentors) => {
+    renderMentors(mentors);
+  });
+
+  loadMentors();
+</script>
+</body>
+</html>

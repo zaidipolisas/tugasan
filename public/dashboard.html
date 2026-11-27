@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Sistem Tugasan</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <span class="brand">🎓 Sistem Tugasan</span>
+  <div class="nav-links">
+    <span id="nav-user" style="color:#cdd5e0;font-size:.85rem"></span>
+    <a href="/admin.html" id="nav-admin" style="display:none">Admin</a>
+    <a href="/submit.html">Submit</a>
+    <a href="/mentor.html">Mentor</a>
+    <button class="btn-logout" id="nav-logout" onclick="window.location.href='/auth/logout'" style="display:none">Log Keluar</button>
+  </div>
+</nav>
+
+<div class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
+    <h1 style="margin:0">Dashboard Status Tugasan</h1>
+    <div style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap">
+      <div>
+        <label style="font-size:.8rem">Sesi</label>
+        <select id="sesi-dash" onchange="loadKelasDash()" style="margin:0;width:auto">
+          <option value="">-- Pilih Sesi --</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.8rem">Kelas</label>
+        <select id="kelas-dash" onchange="loadDashboard()" style="margin:0;width:auto">
+          <option value="">-- Pilih Kelas --</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.8rem">Filter Tugasan</label>
+        <select id="filter-jenis" onchange="filterTable()" style="margin:0;width:auto">
+          <option value="">Semua</option>
+          <option>Case Study</option>
+          <option>Reverse Engineering Project</option>
+          <option>Slicing Project</option>
+          <option>3D Print Project</option>
+        </select>
+      </div>
+      <button id="btn-dl-all" class="btn btn-primary btn-sm" style="display:none" onclick="downloadAll()">⬇ Download Semua</button>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="summary-grid">
+    <div class="summary-card"><div class="num num-total" id="sum-total">—</div><div class="lbl">Jumlah Pelajar</div></div>
+    <div class="summary-card"><div class="num num-selesai" id="sum-selesai">—</div><div class="lbl">Selesai</div></div>
+    <div class="summary-card"><div class="num num-belum" id="sum-belum">—</div><div class="lbl">Belum Selesai</div></div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nama Pelajar</th>
+          <th>No. Matrik</th>
+          <th>Status</th>
+          <th>Jenis Tugasan</th>
+          <th>Masa Submit</th>
+          <th id="th-aksi" style="display:none">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="tb-dashboard"></tbody>
+    </table>
+    <div id="dash-empty" style="text-align:center;padding:2rem;color:#57606a;display:none">
+      Pilih sesi dan kelas untuk papar status pelajar.
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div id="modal-preview" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;overflow:auto">
+  <div style="background:#fff;max-width:800px;margin:2rem auto;border-radius:8px;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid #e5e7eb">
+      <strong id="modal-title">Preview</strong>
+      <button onclick="closeModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:0">
+      <iframe id="modal-iframe" style="width:100%;height:70vh;border:none"></iframe>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  let isGuru = false;
+  let allData = [];
+  let currentKelasId = null;
+
+  // Check auth status
+  fetch('/auth/status').then(r => r.json()).then(d => {
+    if (d.loggedIn) {
+      isGuru = true;
+      document.getElementById('nav-user').textContent = d.user.username;
+      document.getElementById('nav-admin').style.display = 'inline';
+      document.getElementById('nav-logout').style.display = 'inline';
+      document.getElementById('th-aksi').style.display = '';
+    }
+    document.getElementById('dash-empty').style.display = 'block';
+  });
+
+  async function loadSesi() {
+    const res = await fetch('/api/sesi');
+    const sesi = await res.json();
+    const sel = document.getElementById('sesi-dash');
+    sel.innerHTML = '<option value="">-- Pilih Sesi --</option>' +
+      sesi.map(s => `<option value="${s.id}">${s.nama_semester} — ${s.tahun}</option>`).join('');
+  }
+
+  async function loadKelasDash() {
+    const sesi_id = document.getElementById('sesi-dash').value;
+    const sel = document.getElementById('kelas-dash');
+    sel.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+    document.getElementById('tb-dashboard').innerHTML = '';
+    if (!sesi_id) return;
+    const res = await fetch('/api/kelas/' + sesi_id);
+    const kelas = await res.json();
+    kelas.forEach(k => sel.innerHTML += `<option value="${k.id}">${k.nama_kelas}</option>`);
+  }
+
+  async function loadDashboard() {
+    currentKelasId = document.getElementById('kelas-dash').value;
+    if (!currentKelasId) return;
+    const res = await fetch('/api/dashboard/' + currentKelasId);
+    allData = await res.json();
+    renderTable(allData);
+    if (isGuru) document.getElementById('btn-dl-all').style.display = 'inline';
+  }
+
+  function renderTable(data) {
+    const filter = document.getElementById('filter-jenis').value;
+    const filtered = filter ? data.filter(p => p.jenis_tugasan === filter) : data;
+
+    const selesai = data.filter(p => p.submission_id).length;
+    const total = data.length;
+    document.getElementById('sum-total').textContent = total;
+    document.getElementById('sum-selesai').textContent = selesai;
+    document.getElementById('sum-belum').textContent = total - selesai;
+
+    const tb = document.getElementById('tb-dashboard');
+    if (filtered.length === 0) {
+      tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#57606a;padding:1.5rem">Tiada pelajar.</td></tr>';
+      document.getElementById('dash-empty').style.display = 'none';
+      return;
+    }
+    document.getElementById('dash-empty').style.display = 'none';
+
+    tb.innerHTML = filtered.map((p, i) => {
+      const done = !!p.submission_id;
+      const badge = done
+        ? `<span class="badge badge-selesai">✓ Selesai</span>`
+        : `<span class="badge badge-belum">⏳ Belum Selesai</span>`;
+      const masa = p.masa_submit ? new Date(p.masa_submit).toLocaleString('ms-MY') : '—';
+      const aksi = isGuru && done
+        ? `<button class="btn btn-primary btn-sm" onclick="previewFail(${p.submission_id}, '${escHtml(p.nama)}')">Preview</button>
+           <a class="btn btn-success btn-sm" href="/tugasan/download/${p.submission_id}" style="text-decoration:none">Download</a>`
+        : '—';
+      return `<tr id="row-${p.id}">
+        <td>${i+1}</td>
+        <td>${escHtml(p.nama)}</td>
+        <td>${p.no_matrik || '—'}</td>
+        <td>${badge}</td>
+        <td>${p.jenis_tugasan || '—'}</td>
+        <td>${masa}</td>
+        ${isGuru ? `<td>${aksi}</td>` : ''}
+      </tr>`;
+    }).join('');
+  }
+
+  function filterTable() { renderTable(allData); }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function previewFail(submission_id, nama) {
+    document.getElementById('modal-title').textContent = 'Preview — ' + nama;
+    document.getElementById('modal-iframe').src = '/tugasan/preview/' + submission_id;
+    document.getElementById('modal-preview').style.display = 'block';
+  }
+
+  function closeModal() {
+    document.getElementById('modal-preview').style.display = 'none';
+    document.getElementById('modal-iframe').src = '';
+  }
+
+  function downloadAll() {
+    if (currentKelasId) window.location.href = '/tugasan/download-all/' + currentKelasId;
+  }
+
+  // Socket.io — live update
+  const socket = io();
+  socket.on('status-update', (pelajar) => {
+    if (!currentKelasId || String(pelajar.kelas_id) !== String(currentKelasId)) return;
+    // Update or add to allData
+    const idx = allData.findIndex(p => p.id === pelajar.id);
+    if (idx >= 0) allData[idx] = pelajar;
+    else allData.push(pelajar);
+    renderTable(allData);
+    // Highlight updated row
+    const row = document.getElementById('row-' + pelajar.id);
+    if (row) { row.classList.remove('highlight-new'); void row.offsetWidth; row.classList.add('highlight-new'); }
+  });
+
+  loadSesi();
+</script>
+</body>
+</html>

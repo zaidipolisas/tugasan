@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Tugasan — Sistem Tugasan</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <span class="brand">🎓 Sistem Tugasan</span>
+  <div class="nav-links">
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/mentor.html">Mentor</a>
+  </div>
+</nav>
+
+<div class="page" style="max-width:580px">
+  <h1>Submit Tugasan</h1>
+
+  <div class="card">
+    <div id="msg-submit"></div>
+    <div id="form-submit">
+      <label>Pilih Sesi Semester</label>
+      <select id="sesi" onchange="loadKelas()"><option value="">-- Pilih Sesi --</option></select>
+
+      <label>Pilih Kelas</label>
+      <select id="kelas" onchange="loadPelajar()"><option value="">-- Pilih Kelas --</option></select>
+
+      <label>Pilih Nama Anda</label>
+      <select id="pelajar"><option value="">-- Pilih Nama --</option></select>
+
+      <label>Jenis Tugasan</label>
+      <select id="jenis_tugasan">
+        <option value="">-- Pilih Jenis Tugasan --</option>
+        <option>Case Study</option>
+        <option>Reverse Engineering Project</option>
+        <option>Slicing Project</option>
+        <option>3D Print Project</option>
+      </select>
+
+      <label>Upload Fail Tugasan (PDF, Word, Gambar)</label>
+      <input type="file" id="fail" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+
+      <button class="btn btn-success" style="width:100%;margin-top:.5rem" onclick="submitTugasan()">
+        Hantar Tugasan
+      </button>
+    </div>
+
+    <div id="success-panel" style="display:none;text-align:center;padding:2rem 0">
+      <div style="font-size:3rem">✅</div>
+      <h2 style="color:#28a745">Tugasan Berjaya Dihantar!</h2>
+      <p id="success-msg" style="color:#57606a"></p>
+      <button class="btn btn-primary" onclick="resetForm()">Hantar Lagi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function loadSesi() {
+    const res = await fetch('/api/sesi');
+    const sesi = await res.json();
+    const sel = document.getElementById('sesi');
+    sel.innerHTML = '<option value="">-- Pilih Sesi --</option>' +
+      sesi.map(s => `<option value="${s.id}">${s.nama_semester} — ${s.tahun}</option>`).join('');
+  }
+
+  async function loadKelas() {
+    const sesi_id = document.getElementById('sesi').value;
+    const sel = document.getElementById('kelas');
+    sel.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+    document.getElementById('pelajar').innerHTML = '<option value="">-- Pilih Nama --</option>';
+    if (!sesi_id) return;
+    const res = await fetch('/api/kelas/' + sesi_id);
+    const kelas = await res.json();
+    kelas.forEach(k => sel.innerHTML += `<option value="${k.id}">${k.nama_kelas}</option>`);
+  }
+
+  async function loadPelajar() {
+    const kelas_id = document.getElementById('kelas').value;
+    const sel = document.getElementById('pelajar');
+    sel.innerHTML = '<option value="">-- Pilih Nama --</option>';
+    if (!kelas_id) return;
+    const res = await fetch('/api/pelajar/' + kelas_id);
+    const pelajar = await res.json();
+    pelajar.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.nama}</option>`);
+  }
+
+  function showMsg(msg, type='success') {
+    const el = document.getElementById('msg-submit');
+    el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+    setTimeout(() => el.innerHTML = '', 4000);
+  }
+
+  async function submitTugasan() {
+    const sesi_id = document.getElementById('sesi').value;
+    const kelas_id = document.getElementById('kelas').value;
+    const pelajar_id = document.getElementById('pelajar').value;
+    const jenis_tugasan = document.getElementById('jenis_tugasan').value;
+    const fail = document.getElementById('fail').files[0];
+
+    if (!sesi_id || !kelas_id || !pelajar_id || !jenis_tugasan || !fail) {
+      return showMsg('Sila lengkapkan semua maklumat dan pilih fail.', 'error');
+    }
+
+    const fd = new FormData();
+    fd.append('sesi_id', sesi_id);
+    fd.append('kelas_id', kelas_id);
+    fd.append('pelajar_id', pelajar_id);
+    fd.append('jenis_tugasan', jenis_tugasan);
+    fd.append('fail', fail);
+
+    const btn = document.querySelector('#form-submit button');
+    btn.textContent = 'Menghantar...';
+    btn.disabled = true;
+
+    const res = await fetch('/submit', { method: 'POST', body: fd });
+    const d = await res.json();
+    btn.textContent = 'Hantar Tugasan';
+    btn.disabled = false;
+
+    if (d.success) {
+      const nama = document.getElementById('pelajar').options[document.getElementById('pelajar').selectedIndex].text;
+      document.getElementById('success-msg').textContent = `${nama} — ${jenis_tugasan}`;
+      document.getElementById('form-submit').style.display = 'none';
+      document.getElementById('success-panel').style.display = 'block';
+    } else {
+      showMsg(d.error || 'Gagal menghantar.', 'error');
+    }
+  }
+
+  function resetForm() {
+    document.getElementById('form-submit').style.display = 'block';
+    document.getElementById('success-panel').style.display = 'none';
+    document.getElementById('fail').value = '';
+    document.getElementById('msg-submit').innerHTML = '';
+  }
+
+  loadSesi();
+</script>
+</body>
+</html>

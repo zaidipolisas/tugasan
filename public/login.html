@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Sistem Tugasan</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { width: 340px; }
+    h2 { text-align: center; }
+    #msg { color: #dc2626; font-size: 0.875rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🎓 Sistem Tugasan</h2>
+    <label>Username</label>
+    <input type="text" id="username" placeholder="admin">
+    <label>Password</label>
+    <input type="password" id="password" placeholder="••••••••">
+    <button class="btn btn-primary" style="width:100%;padding:.6rem" onclick="login()">Log Masuk</button>
+    <div id="msg"></div>
+  </div>
+  <script>
+    async function login() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = '/admin.html';
+      } else {
+        document.getElementById('msg').textContent = data.error || 'Login gagal.';
+      }
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  </script>
+</body>
+</html>
